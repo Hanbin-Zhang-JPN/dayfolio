@@ -37,7 +37,7 @@ import DiaryCore
         if entries.isEmpty && !storageUnavailable { entries = [Entry()]; saveNow() }
         selection = entries.sorted { $0.date > $1.date }.first?.id
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.recordTime() }
+            Task { @MainActor [weak self] in self?.recordTime() }
         }
     }
     func recordTime() {
