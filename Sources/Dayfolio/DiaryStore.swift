@@ -26,9 +26,10 @@ import DiaryCore
             (query.isEmpty || (e.title + e.text + e.tags).localizedCaseInsensitiveContains(query))
         }.sorted { $0.date > $1.date }
     }
-    init() {
+    init(directory: URL? = nil) {
         let base: URL
-        if let custom = ProcessInfo.processInfo.environment["DAYFOLIO_DATA_DIR"] { base = URL(fileURLWithPath: custom) }
+        if let directory { base = directory }
+        else if let custom = ProcessInfo.processInfo.environment["DAYFOLIO_DATA_DIR"] { base = URL(fileURLWithPath: custom) }
         else { base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Dayfolio") }
         repository = DiaryRepository(url: base.appendingPathComponent("journal.json"))
         do { entries = try repository.load() }
@@ -41,7 +42,7 @@ import DiaryCore
     }
     func recordTime() {
         let now = Date(), elapsed = now.timeIntervalSince(tick); tick = now
-        guard elapsed > 0, elapsed < 3, NSApp.isActive, editorFocused, now.timeIntervalSince(lastEdit) < 30,
+        guard elapsed > 0, elapsed < 3, NSApp?.isActive == true, editorFocused, now.timeIntervalSince(lastEdit) < 30,
               !storageUnavailable, let i = entries.firstIndex(where: { $0.id == selection }) else { return }
         entries[i].writingSeconds += elapsed
         isDirty = true

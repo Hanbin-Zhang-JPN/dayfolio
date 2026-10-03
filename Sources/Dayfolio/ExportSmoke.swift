@@ -4,7 +4,7 @@ import PDFKit
 import DiaryCore
 
 enum ExportSmoke {
-    static func run() throws {
+    @MainActor static func run() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("Dayfolio-Export-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: dir) }
@@ -39,5 +39,26 @@ enum ExportSmoke {
             print("PASS export \(kind.rawValue) (\(data.count) bytes)")
         }
         print("PASS all seven export formats, Unicode, inline images, paginated PDF and archive round-trip")
+        let store = DiaryStore(directory: dir.appendingPathComponent("isolated-data"))
+        for kind in ExportKind.allCases {
+            let before = store.entries.count
+            store.importURLs([dir.appendingPathComponent("test.\(kind.suffix)")])
+            guard store.message == nil, store.entries.count == before + 1,
+                  store.current?.text.contains("Dayfolio") == true else {
+                throw NSError(domain: "ImportCheck", code: 1, userInfo: [NSLocalizedDescriptionKey: "\(kind.rawValue): \(store.message ?? "count=\(store.entries.count), text=\(store.current?.text.prefix(120) ?? "")")"])
+            }
+            print("PASS import \(kind.rawValue)")
+        }
+        let originalCount = store.current!.materials.count
+        let materialURL = dir.appendingPathComponent("sample.png"); try png.write(to: materialURL)
+        store.importURLs([materialURL])
+        guard store.current?.materials.count == originalCount + 1, store.current?.materials.last?.data == png else { throw DiaryError.invalidArchive }
+        guard try store.repository.load() == store.entries else { throw DiaryError.invalidArchive }
+        print("PASS image import and persistence")
+        let count = store.entries.count
+        let invalid = dir.appendingPathComponent("invalid.json"); try Data("invalid archive".utf8).write(to: invalid)
+        store.importURLs([invalid])
+        guard store.entries.count == count, store.message != nil else { throw DiaryError.invalidArchive }
+        print("PASS failed import preserves all existing entries")
     }
 }
