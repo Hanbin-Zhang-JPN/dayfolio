@@ -1,0 +1,21 @@
+name: macOS build and tests
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Core tests
+        run: ./scripts/swift.sh run DiaryCoreChecks
+      - name: Export integration tests
+        run: ./scripts/swift.sh run Dayfolio --self-test
+      - name: Package app
+        run: ./scripts/build-app.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Dayfolio-macOS
+          path: dist/*.zip
